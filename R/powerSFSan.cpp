@@ -27,17 +27,10 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(bdevs);
   
   // Bernouilli polynomials at 0
-  //const Type Bs[8] = {Type(1/6), Type(-1/30), Type(1/42), Type(-1/30), Type(5/66), Type(-691/2730), Type(7/6), Type(-3617/510)};
-  //const Type Bs[8] = {1.0/6, -1.0/30, 1.0/42, -1.0/30, 5.0/66, -691.0/2730, 7.0/6, -3617.0/510};
-  //Type Bs[8];
-  
   vector<Type> Bs(8);Bs << 1.0/6, -1.0/30, 1.0/42, -1.0/30, 5.0/66, -691.0/2730, 7.0/6, -3617.0/510;
-  //Bs(0) = 1/6; Bs(1) = -1/30; Bs(2) = 1/42; Bs(3) = -1/30; Bs(4) = 5/66; Bs(5) = -691/2730; Bs(6) = 7/6;Bs(7) = -3617/510;
-  //REPORT(Bs[0]);REPORT(Bs[1]);REPORT(Bs[2]);REPORT(Bs[3]);REPORT(Bs[4]);REPORT(Bs[5]);
-  //REPORT(Bs);
+
   
-  
-  Type nll=0.0;
+  Type nll = 0.0;
   
   Type beta;
   
@@ -58,7 +51,7 @@ Type objective_function<Type>::operator() ()
   //parallel_accumulator<Type> nll(this);
   
   // add likelihood contribution for gene level random effects
-  nll-= dnorm(bdevs, Type(0), Type(1), true).sum();
+  nll -= dnorm(bdevs, Type(0), Type(1), true).sum();
   
   // likelihood contribution per gene
   for(int i=0;i<obs.rows();i++){
