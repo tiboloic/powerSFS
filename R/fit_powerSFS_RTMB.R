@@ -20,12 +20,16 @@ parameters <- list(
 
 # negative log-likelihood
 nLL <- function(params, eps = 1e-8) {
+<<<<<<< HEAD
   
+=======
+>>>>>>> e2119b785a0dbd5de19665f93ba976f87864f2a0
   nLL <- 0.0
   
   # random deviations in SFS slopes
   nLL <- nLL - sum(dnorm(bs, mean = mub, sd - sdb, log = TRUE))
   
+<<<<<<< HEAD
   # Bernoulli polynomials evaluated at zero
   Bs <- c(1/6, -1/30, 1/42, -1/30, 5/66, -691/2730, 7/6, -3617/510)
   n_B <- length(B2)
@@ -73,4 +77,27 @@ nLL <- function(params, eps = 1e-8) {
       zetas[j] <- zeta
     }
     
+=======
+  # Bernouilli polunomials evaluated at zero
+  B2 <- c(1/6, -1/30, 1/42, -1/30, 5/66, -691/2730, 7/6, -3617/510)
+  n_B <- length(B2)
+  
+  # proportion of missense predicted by bin
+  # initialise with small probability to avoid limit case where p = 0
+  preds <- rep(eps, ncol(obs) - 1)
+  
+  # calculate first 15 terms of the series
+  for (i in 1:15) {
+    preds[floor(log2(i))] = preds[floor(log2(i))] + i^beta
+  }
+  
+  # use asymptotic approximation for the remaining 1 000 000+ terms
+  #  build lower and upper limits of bins
+  
+  last_bin <- ceiling(log2(an[i]))
+  lower <- 2 ^ (1:last_bin - 1)
+  upper <- 2 ^ (1:last_bin) -1
+  zeta <- 
+  
+>>>>>>> e2119b785a0dbd5de19665f93ba976f87864f2a0
   }
