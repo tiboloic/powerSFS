@@ -13,26 +13,24 @@ n_genes <- sfs %>% count(gene) %>% tally() %>% as.numeric()
 obs <- sfs %>% select(gene, octave, count)  %>% spread(key=octave, value=count, fill=0)
 
 parameters <- list(
-  mub = -1,
-  sdb = 1,
+  mub = -1.0,
+  sdb = 1.0,
   bs = rep(0, n_genes)
 )
 
 # negative log-likelihood
 nLL <- function(params, eps = 1e-8) {
-<<<<<<< HEAD
+
+  getAll(params)
   
-=======
->>>>>>> e2119b785a0dbd5de19665f93ba976f87864f2a0
   nLL <- 0.0
   
   # random deviations in SFS slopes
-  nLL <- nLL - sum(dnorm(bs, mean = mub, sd - sdb, log = TRUE))
+  nLL <- nLL - sum(dnorm(bs, mean = mub, sd = sdb, log = TRUE))
   
-<<<<<<< HEAD
   # Bernoulli polynomials evaluated at zero
   Bs <- c(1/6, -1/30, 1/42, -1/30, 5/66, -691/2730, 7/6, -3617/510)
-  n_B <- length(B2)
+  n_B <- length(Bs)
   
   for (i in 1:nrow(obs)) {
     
@@ -45,59 +43,53 @@ nLL <- function(params, eps = 1e-8) {
     
     # calculate first 15 terms of the series
     for (j in 1:15) {
-      preds[floor(log2(j)) + 1] <- preds[floor(log2(j)) + 1] + i ^ -beta
+      preds[floor(log2(j)) + 1] <- preds[floor(log2(j)) + 1] + j ^ -beta
     }
     
     ## use asymptotic approximation for the remaining 1 000 000+ terms
     
-    #  build lower and upper limits of bins
+    #  build upper limits of bins
     last_bin <- ceiling(log2(an[i]))
-    #lower <- 2 ^ (1:last_bin - 1)
-    upper <- 2 ^ (1:last_bin) -1
-    upper[last_bin] <- an[i]
+    lower <- 2 ^ (1:last_bin - 1)
+    #upper <- 2 ^ (1:last_bin) -1
     
-    ## calculate first 8 terms of the Euler-Maclaurin formula
-    zetas <- rep(0, last_bin)
+    # upper limit of last bin is the maximum number of alleles observed
+    lower[last_bin + 1] <- an[i]
     
-    for (j in 4:last_bin) {
+    # here zeta[i] = sum_^inf{1/i^beta}
+    zetas <- rep(0, last_bin - 3)
+    
+    for (j in 1:(last_bin - 3)) {
       
-      n <- upper[j]
+      n <- lower[j + 4]
       
+      ## calculate first 9 terms of the Euler-Maclaurin formula
       # term 1
-      zeta <- n ^ (1 - beta) / (beta  - 1) + 0.5 / n ^ beta
+      zeta <- n ^ (1 - beta) / (beta - 1) + 0.5 / n ^ beta
+      
+      # term 2
       term <- beta / 2 / n ^ (beta + 1)
       zeta <-  zeta + term * Bs[1];
   
-      # terms 2 to 8
+      # terms 3 to 9
       for (k in 2:8) {
-        term <- term * (beta + 2 * k - 3) * (beta + 2 * k - 2) / ((2 * k -1) * 2 * k * n * n);
+        term <- term * (beta + 2 * k - 3) * (beta + 2 * k - 2) / ((2 * k -1) * 2 * k * n^2);
         zeta <- zeta + term * Bs[k];
       }
       
       zetas[j] <- zeta
     }
+    preds[5:last_bin] <- -diff(zetas)
     
-=======
-  # Bernouilli polunomials evaluated at zero
-  B2 <- c(1/6, -1/30, 1/42, -1/30, 5/66, -691/2730, 7/6, -3617/510)
-  n_B <- length(B2)
-  
-  # proportion of missense predicted by bin
-  # initialise with small probability to avoid limit case where p = 0
-  preds <- rep(eps, ncol(obs) - 1)
-  
-  # calculate first 15 terms of the series
-  for (i in 1:15) {
-    preds[floor(log2(i))] = preds[floor(log2(i))] + i^beta
+    # proportion of variants in each bin
+    preds <- preds / sum(preds)
+    
+    # multinomial likelihood of observations given expected
+    nLL <- nLL - dmultinom(as.numeric(obs[i, -1]), preds, TRUE)
   }
-  
-  # use asymptotic approximation for the remaining 1 000 000+ terms
-  #  build lower and upper limits of bins
-  
-  last_bin <- ceiling(log2(an[i]))
-  lower <- 2 ^ (1:last_bin - 1)
-  upper <- 2 ^ (1:last_bin) -1
-  zeta <- 
-  
->>>>>>> e2119b785a0dbd5de19665f93ba976f87864f2a0
-  }
+  nLL
+}
+
+obj <- MakeADFun(nLL, parameters, random = c("bs"))
+
+fitted <- nlminb(obj$par)
