@@ -8,20 +8,37 @@ library(RTMB)
 library(tidyverse)
 
 sfs <- read_delim("gnomADv4_protein_altering_sfs_prototype.tsv.gz")
-n_genes <- sfs %>% count(gene) %>% tally() %>% as.numeric()
 
-obs <- sfs %>% select(gene, octave, count)  %>% spread(key=octave, value=count, fill=0)
+# remove genes with low number of observations
+sfs <- sfs %>% group_by(gene) %>% filter(max(octave) > 3)
+n_genes <- sfs %>% tally() %>% nrow
+
+obs <- sfs %>% 
+  select(gene, octave, count)  %>% 
+  spread(key=octave, value=count, fill=0) %>%
+  arrange(gene)
+
+dat <- data.frame(
+  genes = obs %>% pull(gene),
+  obs = I(as.matrix(obs %>% ungroup %>% select(!gene))),
+  an = sfs %>% group_by(gene) %>%
+    summarise(an = max(AN_max)) %>%
+    arrange(gene) %>%
+    pull(an)
+)
 
 parameters <- list(
-  mub = -1.0,
+  mub = 2.0,
   sdb = 1.0,
-  bs = rep(0, n_genes)
+  bs = rep(2, n_genes)
 )
 
 # negative log-likelihood
-nLL <- function(params, eps = 1e-8) {
+nLL <- function(params) {
 
-  getAll(params)
+  eps <- 1e-8
+  
+  getAll(params, dat)
   
   nLL <- 0.0
   
@@ -35,11 +52,20 @@ nLL <- function(params, eps = 1e-8) {
   for (i in 1:nrow(obs)) {
     
     # slope of SFS for gene i
-    beta <- mub + bs[i]
+    beta <- bs[i]
+    
+    #  build upper limits of bins
+    last_bin <- floor(log2(an[i]))
+
+    lower <- 2 ^ (0:last_bin)
+    
+    # upper limit of last bin is the maximum number of alleles observed
+    # for that particular gene
+    lower[last_bin + 2] <- an[i]
     
     # proportion of missense predicted by bin
     # initialise with small probability to avoid limit case where p = 0
-    preds <- rep(eps, ncol(obs) - 1)
+    preds <- rep(eps, last_bin + 1)
     
     # calculate first 15 terms of the series
     for (j in 1:15) {
@@ -48,48 +74,45 @@ nLL <- function(params, eps = 1e-8) {
     
     ## use asymptotic approximation for the remaining 1 000 000+ terms
     
-    #  build upper limits of bins
-    last_bin <- ceiling(log2(an[i]))
-    lower <- 2 ^ (1:last_bin - 1)
-    #upper <- 2 ^ (1:last_bin) -1
+    # zeta[i] = \sum_n^\infty{1/i^\beta}
+    zetas <- rep(0, last_bin - 2)
     
-    # upper limit of last bin is the maximum number of alleles observed
-    lower[last_bin + 1] <- an[i]
-    
-    # here zeta[i] = sum_^inf{1/i^beta}
-    zetas <- rep(0, last_bin - 3)
-    
-    for (j in 1:(last_bin - 3)) {
-      
+    for (j in 1:(last_bin - 2)) {
+
       n <- lower[j + 4]
-      
+
       ## calculate first 9 terms of the Euler-Maclaurin formula
       # term 1
       zeta <- n ^ (1 - beta) / (beta - 1) + 0.5 / n ^ beta
-      
+
       # term 2
       term <- beta / 2 / n ^ (beta + 1)
       zeta <-  zeta + term * Bs[1];
-  
+
       # terms 3 to 9
       for (k in 2:8) {
         term <- term * (beta + 2 * k - 3) * (beta + 2 * k - 2) / ((2 * k -1) * 2 * k * n^2);
         zeta <- zeta + term * Bs[k];
       }
-      
+
       zetas[j] <- zeta
     }
-    preds[5:last_bin] <- -diff(zetas)
-    
+    preds[5:(last_bin + 1)] <- -diff(zetas)
+
     # proportion of variants in each bin
     preds <- preds / sum(preds)
-    
+
     # multinomial likelihood of observations given expected
-    nLL <- nLL - dmultinom(as.numeric(obs[i, -1]), preds, TRUE)
+    nLL <- nLL - dmultinom(x = obs[i,1:(last_bin + 1)], prob = preds, log = TRUE)
   }
   nLL
 }
 
+#test
+# nLL <- function(params, eps = 1e-8) {
+#   getAll(params, dat)
+#   -dmultinom(obs[1,], prob=rep(1, length(obs[1,])), log=TRUE)
+# }
 obj <- MakeADFun(nLL, parameters, random = c("bs"))
 
-fitted <- nlminb(obj$par)
+#fitted <- nlminb(obj$par)
