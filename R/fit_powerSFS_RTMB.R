@@ -11,16 +11,18 @@ sfs <- read_delim("gnomADv4_protein_altering_sfs_prototype.tsv.gz")
 
 # remove genes with low number of observations
 sfs <- sfs %>% group_by(gene) %>% filter(max(octave) > 3)
-n_genes <- sfs %>% tally() %>% nrow
 
 obs <- sfs %>% 
   select(gene, octave, count)  %>% 
   spread(key=octave, value=count, fill=0) %>%
   arrange(gene)
 
+# matrix of counts per gene
+counts <- as.matrix(obs %>% ungroup %>% select(!gene))
+
 dat <- data.frame(
   genes = obs %>% pull(gene),
-  obs = I(as.matrix(obs %>% ungroup %>% select(!gene))),
+  obs = I(counts),
   an = sfs %>% group_by(gene) %>%
     summarise(an = max(AN_max)) %>%
     arrange(gene) %>%
@@ -30,7 +32,7 @@ dat <- data.frame(
 parameters <- list(
   mub = 2.0,
   sdb = 1.0,
-  bs = rep(2, n_genes)
+  bs = rep(2, nrow(obs))
 )
 
 # negative log-likelihood
@@ -47,36 +49,38 @@ nLL <- function(params) {
   
   # Bernoulli polynomials evaluated at zero
   Bs <- c(1/6, -1/30, 1/42, -1/30, 5/66, -691/2730, 7/6, -3617/510)
-  n_B <- length(Bs)
+  #n_B <- length(Bs)
   
   for (i in 1:nrow(obs)) {
     
     # slope of SFS for gene i
     beta <- bs[i]
     
+    #preds <- 1/(1:ncol(obs))^beta
+    
     #  build upper limits of bins
     last_bin <- floor(log2(an[i]))
 
     lower <- 2 ^ (0:last_bin)
-    
+
     # upper limit of last bin is the maximum number of alleles observed
     # for that particular gene
     lower[last_bin + 2] <- an[i]
-    
+
     # proportion of missense predicted by bin
     # initialise with small probability to avoid limit case where p = 0
     preds <- rep(eps, last_bin + 1)
-    
+
     # calculate first 15 terms of the series
     for (j in 1:15) {
       preds[floor(log2(j)) + 1] <- preds[floor(log2(j)) + 1] + j ^ -beta
     }
-    
+
     ## use asymptotic approximation for the remaining 1 000 000+ terms
-    
+
     # zeta[i] = \sum_n^\infty{1/i^\beta}
     zetas <- rep(0, last_bin - 2)
-    
+
     for (j in 1:(last_bin - 2)) {
 
       n <- lower[j + 4]
@@ -103,16 +107,15 @@ nLL <- function(params) {
     preds <- preds / sum(preds)
 
     # multinomial likelihood of observations given expected
-    nLL <- nLL - dmultinom(x = obs[i,1:(last_bin + 1)], prob = preds, log = TRUE)
-  }
+    #nLL <- nLL - dmultinom(x = obs[i,1:(last_bin + 1)], prob = preds, log = TRUE)
+    counts <- as.vector(obs[i, 1:(last_bin + 1)])
+    nLL <- nLL - dmultinom(x = counts, prob = preds, log = TRUE)
+    }
   nLL
 }
 
-#test
-# nLL <- function(params, eps = 1e-8) {
-#   getAll(params, dat)
-#   -dmultinom(obs[1,], prob=rep(1, length(obs[1,])), log=TRUE)
-# }
 obj <- MakeADFun(nLL, parameters, random = c("bs"))
 
-#fitted <- nlminb(obj$par)
+fit <- nlminb(obj$par, obj$fn, obj$gr)
+rep <- sdreport(obj)
+ranef <- summary(rep, "random")
