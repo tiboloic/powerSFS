@@ -55,12 +55,9 @@ nLL <- function(params) {
     
     # slope of SFS for gene i
     beta <- bs[i]
-    
-    #preds <- 1/(1:ncol(obs))^beta
-    
+
     #  build upper limits of bins
     last_bin <- floor(log2(an[i]))
-
     lower <- 2 ^ (0:last_bin)
 
     # upper limit of last bin is the maximum number of alleles observed
@@ -107,7 +104,6 @@ nLL <- function(params) {
     preds <- preds / sum(preds)
 
     # multinomial likelihood of observations given expected
-    #nLL <- nLL - dmultinom(x = obs[i,1:(last_bin + 1)], prob = preds, log = TRUE)
     counts <- as.vector(obs[i, 1:(last_bin + 1)])
     nLL <- nLL - dmultinom(x = counts, prob = preds, log = TRUE)
     }
@@ -119,3 +115,18 @@ obj <- MakeADFun(nLL, parameters, random = c("bs"))
 fit <- nlminb(obj$par, obj$fn, obj$gr)
 rep <- sdreport(obj)
 ranef <- summary(rep, "random")
+fixef <- summary(rep, "fixed")
+res <- tibble(
+  genes = dat$genes,
+  beta = ranef[, "Estimate"],
+  sd_beta = ranef[, "Std. Error"],
+  mub = fixef["mub", "Estimate"],
+  sd_mub = fixef["mub", "Std. Error"],
+  sdb = fixef["sdb", "Estimate"])
+
+res <- res %>% mutate(
+  z = (beta - mub) / sd_beta,
+  p = 2 * pnorm(abs(z), lower.tail = FALSE)
+)
+
+write_tsv(res, file = "gnomADv4_protein_altering_sfs_prototype_fit.tsv.gz")

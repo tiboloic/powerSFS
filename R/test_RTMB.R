@@ -5,7 +5,7 @@ p = 20
 
 # simulate data
 bs = 1 + rbeta(n, 2, 2)
-ps <- sapply(bs, function(b) {1/(1:p)^b})
+ps <- sapply(bs, function(b) 1 / (1:p)^b)
 obs <- matrix(
   sapply(1:n, function(i) rmultinom(1, rpois(1, 1000), prob=ps[,i])),
   p,
@@ -17,26 +17,31 @@ par <- list(
   bs = rep(2, n)
 )
 
+dat <- data.frame(
+  obs_index = 1:n,
+  obs = I(t(obs)))
+
 nLL <- function(params) {
   
-  dm <- function(x,p) {
-    lgamma(sum(x) + 1) - sum(lgamma(x+1)) + sum(x*log(p))
-  }
-  getAll(params)
+  getAll(params, dat)
   
   obs <- OBS(obs)
   
   nLL <- 0.0
   nLL <- nLL - sum(dnorm(bs, mu, sig, TRUE))
   
-  for (i in 1:ncol(obs)) {
+  for (i in 1:nrow(obs)) {
     beta <- bs[i]
     preds <- 1/(1:p)^beta
     preds <- preds/sum(preds)
     
-    nLL <- nLL - dmultinom(obs[,i], prob=preds, log = TRUE)
-    #nLL <- nLL - dm(obs[,i], preds)
-  }
+    # generates error 'Error: Comparison is generally unsafe for AD types'
+    nLL <- nLL - dmultinom(obs[i,], prob=preds, log = TRUE)
+
+    # does not generate an error
+    nLL <- nLL - dmultinom(as.vector(obs[i,]), prob=preds, log = TRUE)
+    }
+  
   nLL
 }
 
