@@ -89,3 +89,94 @@ lines(ess.y ~ loeuf.x, data = ess_dat_loeuf, col=3, lwd = 2)
 ess_dat_am <- ess_dat_under %>% arrange(desc(mean_am_pathogenicity)) %>% transmute(am.x = 1:nrow(ess_dat_under)/nrow(ess_dat_under), ess.y = cumsum(essential)/sum(ess_dat_under$essential))
 lines(ess.y ~ am.x, data = ess_dat_am, col=4, lwd = 2)
 legend("topleft", c("alpha missense", "powerSFS", "LOEUF 2"), lwd = 2, col = c(4, 2, 3))
+
+# Clinvar pathogenic de novo  
+# 
+denovo_patho <- read_tsv("data/clinvar_denovo_pathogenic.tsv")
+dn <- denovo_patho %>% separate_longer_delim(`Gene(s)`, delim="|") %>%
+  transmute(gene = `Gene(s)`) %>% group_by(gene) %>% summarise(n_patho=n()) %>%
+  inner_join(dat)
+
+plot(y ~ x, data = dn %>% arrange(desc(beta)) %>%
+       transmute(x = 1:nrow(dn)/nrow(dn),
+                 y = cumsum(n_patho)/sum(n_patho)),
+     type="l", col = 2, lwd = 2,
+     xlab  = "Quantile of intolerance metric", ylab = "proportion of denovo pathogenic ClinVar variants")
+abline(a=0, b=1, col=1)
+lines(y ~ x, data = dn %>% arrange(lof.oe_ci.upper) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=3, lwd = 2)
+lines(y ~ x, data = dn %>% arrange(desc(mean_am_pathogenicity)) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=4, lwd = 2)
+legend("topleft", c("LOEUF 2", "powerSFS", "alpha missense"), lwd = 2, col = c(3, 2, 4), bty = "n")
+
+#
+# de novo pathogenic and likely pathogenic
+#
+
+denovo_patho <- read_tsv("data/clinvar_denovo_pathogenic_likelypatho.tsv")
+dn <- denovo_patho %>% separate_longer_delim(`Gene(s)`, delim="|") %>%
+  transmute(gene = `Gene(s)`) %>% group_by(gene) %>% summarise(n_patho=n()) %>%
+  inner_join(dat)
+
+plot(y ~ x, data = dn %>% arrange(desc(beta)) %>%
+       transmute(x = 1:nrow(dn)/nrow(dn),
+                 y = cumsum(n_patho)/sum(n_patho)),
+     type="l", col = 2, lwd = 2,
+     xlab  = "Quantile of intolerance metric", ylab = "proportion of denovo pathogenic ClinVar variants")
+abline(a=0, b=1, col=1)
+lines(y ~ x, data = dn %>% arrange(lof.oe_ci.upper) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=3, lwd = 2)
+lines(y ~ x, data = dn %>% arrange(desc(mean_am_pathogenicity)) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=4, lwd = 2)
+legend("topleft", c("LOEUF 2", "powerSFS", "alpha missense"), lwd = 2, col = c(3, 2, 4), bty = "n")
+
+#
+# all patho and likely patho
+#
+
+denovo_patho <- read_tsv("data/clinvar_pathogenic_likelypatho.tsv")
+dn <- denovo_patho %>% separate_longer_delim(`Gene(s)`, delim="|") %>%
+  transmute(gene = `Gene(s)`) %>% group_by(gene) %>% summarise(n_patho=n()) %>%
+  inner_join(dat)
+
+plot(y ~ x, data = dn %>% arrange(desc(beta)) %>%
+       transmute(x = 1:nrow(dn)/nrow(dn),
+                 y = cumsum(n_patho)/sum(n_patho)),
+     type="l", col = 2, lwd = 2,
+     xlab  = "Quantile of intolerance metric", ylab = "proportion of denovo pathogenic ClinVar variants")
+abline(a=0, b=1, col=1)
+lines(y ~ x, data = dn %>% arrange(lof.oe_ci.upper) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=3, lwd = 2)
+lines(y ~ x, data = dn %>% arrange(desc(mean_am_pathogenicity)) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=4, lwd = 2)
+legend("topleft", c("LOEUF 2", "powerSFS", "alpha missense"), lwd = 2, col = c(3, 2, 4), bty = "n")
+
+#
+# all missense patho and likely patho
+#
+
+denovo_patho <- read_tsv("data/clinvar_missense_pathogenic_likelypatho.tsv")
+dn <- denovo_patho %>% separate_longer_delim(`Gene(s)`, delim="|") %>%
+  transmute(gene = `Gene(s)`) %>% group_by(gene) %>% summarise(n_patho=n()) %>%
+  inner_join(dat)
+
+plot(y ~ x, data = dn %>% arrange(desc(beta)) %>%
+       transmute(x = 1:nrow(dn)/nrow(dn),
+                 y = cumsum(n_patho)/sum(n_patho)),
+     type="l", col = 2, lwd = 2,
+     xlab  = "Quantile of intolerance metric", ylab = "proportion of denovo pathogenic ClinVar variants")
+abline(a=0, b=1, col=1)
+lines(y ~ x, data = dn %>% arrange(lof.oe_ci.upper) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=3, lwd = 2)
+lines(y ~ x, data = dn %>% arrange(desc(mean_am_pathogenicity)) %>%
+        transmute(x = 1:nrow(dn)/nrow(dn),
+                  y = cumsum(n_patho)/sum(n_patho)), col=4, lwd = 2)
+legend("topleft", c("LOEUF 2", "powerSFS", "alpha missense"), lwd = 2, col = c(3, 2, 4), bty = "n")
+
